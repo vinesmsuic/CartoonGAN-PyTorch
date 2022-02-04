@@ -63,6 +63,8 @@ python train.py
 
 # TODO
 
+[] Automatic Mixed Precision
+
 [] LR Scheduler
 
 [] Loss visualization
