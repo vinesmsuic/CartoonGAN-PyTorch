@@ -5,8 +5,8 @@ import config
 VGG_types = {
     "VGG11": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
     "VGG13": [64, 64, "M", 128, 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
-    "VGG16": [64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, "M", 512, 512, 512, "M", ],
-    "VGG19": [64, 64, "M", 128, 128, "M", 256, 256, 256, 256, "M", 512, 512, 512, 512, "M", 512, 512, 512, 512, "M", ],
+    "VGG16": [64, 64, "M", 128, 128, "M", 256, 256, 256, "M", 512, 512, 512, "M", 512, 512, 512, "M"],
+    "VGG19": [64, 64, "M", 128, 128, "M", 256, 256, 256, 256, "M", 512, 512, 512, 512, "M", 512, 512, 512, 512, "M"],
 }
 
 model_weight_urls = {
@@ -27,9 +27,9 @@ class VGGNet(nn.Module):
         self.feature_mode = feature_mode
         self.batch_norm = batch_norm
 
-        self.conv_layers = self.create_conv_layers(VGG_types[VGGtype])
+        self.features = self.create_conv_layers(VGG_types[VGGtype])
 
-        self.fc_layers = nn.Sequential(
+        self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, 4096),
             nn.ReLU(),
             nn.Dropout(p=0.5),
@@ -40,16 +40,16 @@ class VGGNet(nn.Module):
         )
 
         if not init_weights == None:
-            self.load_state_dict(torch.load(init_weights), strict=False)
+            self.load_state_dict(torch.load(init_weights))
 
     def forward(self, x):
         if not self.feature_mode:
-            x = self.conv_layers(x)
+            x = self.features(x)
             x = x.view(x.size(0), -1)
-            x = self.fc_layers(x)
+            x = self.classifier(x)
 
         elif self.feature_mode == True and self.batch_norm == False:
-            module_list = list(self.conv_layers.modules())
+            module_list = list(self.features.modules())
             #print(module_list[1:27])
             for layer in module_list[1:27]: # conv4_4 Feature maps
                 x = layer(x) 
