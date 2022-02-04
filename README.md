@@ -64,9 +64,13 @@ python train.py
 # TODO
 
 [] LR Scheduler
+
 [] Loss visualization
+
 [] WandB visualization
+
 [] Inference Code
+
 [X] Explaining Code
 
 # Working Environments
