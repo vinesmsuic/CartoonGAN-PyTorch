@@ -62,7 +62,7 @@ def train_fn(disc, gen, loader, opt_disc, opt_gen, l1_loss, mse, VGG):
         D_edge_loss = mse(D_edge, torch.zeros_like(D_edge))
 
         # Author's code divided it by 3.0, I believe it has similar thoughts to CycleGAN (divided by 2 with only 2 loss)
-        D_loss = D_real_loss + D_fake_loss + D_edge_loss / 3.0   
+        D_loss = (D_real_loss + D_fake_loss + D_edge_loss) / 3.0   
             
         opt_disc.zero_grad() # clears old gradients from the last step
 
