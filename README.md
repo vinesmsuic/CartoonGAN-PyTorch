@@ -39,7 +39,6 @@ pip install tqdm
 python edge_smooth.py
 ```
 4. Edit `config.py`
-* Set T
 * If you are using your custom data that are in random size, please enable RandomCrop in `config.py`.
 ```python
 transform_cartoon_pairs = A.Compose(
