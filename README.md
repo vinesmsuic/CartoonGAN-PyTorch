@@ -30,7 +30,7 @@ pip install tqdm
 
 # To start training
 
-0. Read `REVIEW.md` to understand what it is
+0. Read https://vinesmsuic.github.io/2022/01/21/i2i-cartoongan/ to understand the implementation
 1. Prepare the photo and cartoon data
 2. Get the pre-trained VGG19 weight and put it in the `CartoonGAN` folder : 
     https://download.pytorch.org/models/vgg19-dcbb9e9d.pth
