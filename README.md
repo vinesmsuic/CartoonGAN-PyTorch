@@ -1,5 +1,7 @@
-# CartoonGAN (P
+# CartoonGAN (PyTorch)
 Unofficial PyTorch implementation of CartoonGAN. We followed the original Lua training implementation from the paper author ([Yang Chen](https://github.com/FlyingGoblin/CartoonGAN)).
+
+![](https://i.imgur.com/fgLM5If.png)
 
 # Repo Structure
 ```python
