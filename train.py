@@ -12,7 +12,7 @@ from tqdm import tqdm
 from torchvision.utils import save_image
 from utils import save_test_examples, load_checkpoint, save_checkpoint
 
-def initialization_phase(gen, loader, opt_gen, l1_loss, g_scaler, VGG, pretrain_epochs):
+def initialization_phase(gen, loader, opt_gen, l1_loss, VGG, pretrain_epochs):
     for epoch in range(pretrain_epochs):
         loop = tqdm(loader, leave=True)
         losses = []
@@ -39,7 +39,7 @@ def initialization_phase(gen, loader, opt_gen, l1_loss, g_scaler, VGG, pretrain_
             #g_scaler.scale(reconstruction_loss).backward()
             #g_scaler.step(opt_gen)
             #g_scaler.update()    
-            loop.set_postfix(epoch=epoch)
+            loop.set_postfix(epoch=epoch + 1)
 
         print('[%d/%d] - Recon loss: %.8f' % ((epoch + 1), pretrain_epochs, torch.mean(torch.FloatTensor(losses))))
         
@@ -49,73 +49,72 @@ def initialization_phase(gen, loader, opt_gen, l1_loss, g_scaler, VGG, pretrain_
     
 
 
-def train_fn(disc, gen, loader, opt_disc, opt_gen, l1_loss, mse, g_scaler, d_scaler, VGG):
-    loop = tqdm(loader, leave=True)
+def train_fn(total_epoch, disc, gen, train_loader, val_loader, opt_disc, opt_gen, l1_loss, mse, VGG):
+    step = 0 
 
-    # Training
-    for idx, (sample_photo, sample_cartoon, sample_edge) in enumerate(loop):
-        sample_photo = sample_photo.to(config.DEVICE)
-        sample_cartoon = sample_cartoon.to(config.DEVICE)
-        sample_edge = sample_edge.to(config.DEVICE)
+    for epoch in range(total_epoch):
+        loop = tqdm(train_loader, leave=True)
 
-        # Train Discriminator
-        #with torch.cuda.amp.autocast():
+        # Training
+        for idx, (sample_photo, sample_cartoon, sample_edge) in enumerate(loop):
+            sample_photo = sample_photo.to(config.DEVICE)
+            sample_cartoon = sample_cartoon.to(config.DEVICE)
+            sample_edge = sample_edge.to(config.DEVICE)
 
-        #Pass samples into Discriminator: Fake Cartoon, real Cartoon and Edge
-        fake_cartoon = gen(sample_photo)
+            # Train Discriminator
+            #Pass samples into Discriminator: Fake Cartoon, real Cartoon and Edge
+            fake_cartoon = gen(sample_photo)
 
-        D_real = disc(sample_cartoon)
-        D_fake = disc(fake_cartoon.detach())
-        D_edge = disc(sample_edge)
+            D_real = disc(sample_cartoon)
+            D_fake = disc(fake_cartoon.detach())
+            D_edge = disc(sample_edge)
 
-        #Compute loss (edge-promoting adversarial loss)
-        D_real_loss = mse(D_real, torch.ones_like(D_real))
-        D_fake_loss = mse(D_fake, torch.zeros_like(D_fake))
-        D_edge_loss = mse(D_edge, torch.zeros_like(D_edge))
+            #Compute loss (edge-promoting adversarial loss)
+            D_real_loss = mse(D_real, torch.ones_like(D_real))
+            D_fake_loss = mse(D_fake, torch.zeros_like(D_fake))
+            D_edge_loss = mse(D_edge, torch.zeros_like(D_edge))
 
-        # Author's code divided it by 3.0, I believe it has similar thoughts to CycleGAN (divided by 2 with only 2 loss)
-        D_loss = (D_real_loss + D_fake_loss + D_edge_loss) / 3.0   
-            
-        opt_disc.zero_grad() # clears old gradients from the last step
+            # Author's code divided it by 3.0, I believe it has similar thoughts to CycleGAN (divided by 2 with only 2 loss)
+            D_loss = (D_real_loss + D_fake_loss + D_edge_loss) / 3.0   
+                
+            opt_disc.zero_grad() # clears old gradients from the last step
 
-        D_loss.backward()
-        opt_disc.step()
-        
-        #opt_disc.zero_grad() # clears old gradients from the last step
-        #d_scaler.scale(D_loss).backward() #backpropagation
-        #d_scaler.step(opt_disc)
-        #d_scaler.update()
+            D_loss.backward()
+            opt_disc.step()
 
-        # Train Generator
-        #with torch.cuda.amp.autocast():
-        D_real = disc(sample_cartoon)
-        D_fake = disc(fake_cartoon.detach())
+            # Train Generator
+            D_real = disc(sample_cartoon)
+            D_fake = disc(fake_cartoon.detach())
 
-        G_fake_loss = mse(D_fake, torch.ones_like(D_fake))
+            G_fake_loss = mse(D_fake, torch.ones_like(D_fake))
 
-        # Content loss
-        sample_photo_feature = VGG(sample_photo)
-        fake_cartoon_feature = VGG(fake_cartoon)
-        content_loss = l1_loss(fake_cartoon_feature, sample_photo_feature.detach())
+            # Content loss
+            sample_photo_feature = VGG(sample_photo)
+            fake_cartoon_feature = VGG(fake_cartoon)
+            content_loss = l1_loss(fake_cartoon_feature, sample_photo_feature.detach())
 
-        # Compute loss (adversarial loss + lambda*content loss)
-        G_loss = G_fake_loss + config.LAMBDA_CONTENT * content_loss
+            # Compute loss (adversarial loss + lambda*content loss)
+            G_loss = G_fake_loss + config.LAMBDA_CONTENT * content_loss
 
-        opt_gen.zero_grad()
+            opt_gen.zero_grad()
 
-        G_loss.backward()
-        opt_gen.step()
+            G_loss.backward()
+            opt_gen.step()
 
-        #opt_gen.zero_grad()
-        #g_scaler.scale(G_loss).backward()
-        #g_scaler.step(opt_gen)
-        #g_scaler.update()
+            if step % 200 == 0:
+                save_image(sample_photo*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "epoch_" + str(epoch + 1) + "step_" + str(step + 1) + "_photo.png"))
+                save_image(fake_cartoon*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "epoch_" + str(epoch + 1) + "step_" + str(step + 1) + "_fakecartoon.png"))
 
-        if idx % 200 == 0:
-            save_image(sample_photo*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "step_" + str(idx) + "_photo.png"))
-            save_image(fake_cartoon*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "step_" + str(idx) + "_fakecartoon.png"))
+            step+= 1
 
-        #loop.set_postfix(step=idx)
+            loop.set_postfix(step=step)
+
+        if config.SAVE_MODEL and epoch % 5 == 0:
+            save_checkpoint(gen, opt_gen, epoch, folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_GEN)
+            save_checkpoint(disc, opt_disc, epoch, folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_DISC)
+
+        # Test Some data
+        save_test_examples(gen, val_loader, epoch, folder=config.RESULT_TEST_DIR)
 
 
 def main():
@@ -148,15 +147,11 @@ def main():
     val_dataset = TestDataset(config.VAL_PHOTO_DIR)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=config.NUM_WORKERS)
 
-    #Use float64 training 
-    g_scaler = torch.cuda.amp.GradScaler()
-    d_scaler = torch.cuda.amp.GradScaler()
-
     # Initialization Phase
     if not(is_gen_loaded and is_disc_loaded):
         print("="*80)
         print("=> Initialization Phase")
-        initialization_phase(gen, train_loader, opt_gen, L1_Loss, g_scaler, VGG19, pretrain_epochs=config.PRETRAIN_EPOCHS)
+        initialization_phase(gen, train_loader, opt_gen, L1_Loss, VGG19, pretrain_epochs=config.PRETRAIN_EPOCHS)
         print("Finished Initialization Phase")
         print("="*80)
 
@@ -164,15 +159,9 @@ def main():
             save_checkpoint(gen, opt_gen, 'i', folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_GEN)
 
     # Do the training
-    for epoch in range(config.NUM_EPOCHS):
-        train_fn(disc, gen, train_loader, opt_disc, opt_gen, L1_Loss, MSE_Loss, g_scaler, d_scaler, VGG19)
-
-        if config.SAVE_MODEL and epoch % 5 == 0:
-            save_checkpoint(gen, opt_gen, epoch, folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_GEN)
-            save_checkpoint(disc, opt_disc, epoch, folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_DISC)
-
-        # Test Some data
-        save_test_examples(gen, val_loader, epoch, folder=config.RESULT_TEST_DIR)
+    print("=> Start Training")
+    train_fn(config.NUM_EPOCHS, disc, gen, train_loader, val_loader, opt_disc, opt_gen, L1_Loss, MSE_Loss, VGG19)
+    print("Finished Training")
 
 if __name__ == "__main__":
     main()
