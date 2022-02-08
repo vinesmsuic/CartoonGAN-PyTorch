@@ -64,17 +64,12 @@ python train.py
 
 # TODO
 
-[] Automatic Mixed Precision
-
-[] LR Scheduler
-
-[] Loss visualization
-
-[] WandB visualization
-
-[] Inference Code
-
-[X] Explaining Code
+* [] Automatic Mixed Precision
+* [] LR Scheduler
+* [] Loss visualization
+* [] WandB visualization
+* [] Inference Code
+* [X] Explaining Code
 
 # Working Environments
 
