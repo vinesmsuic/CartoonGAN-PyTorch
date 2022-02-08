@@ -40,17 +40,17 @@ def align_image_pair(cartoon, edge_smoothed_cartoon):
     aligned = np.concatenate((cartoon, edge_smoothed_cartoon), 1)
     return aligned
 
-def produce_edge_dataset(cartoon_folder = config.TRAIN_CARTOON_DIR, cortoon_edge_folder = config.TRAIN_CARTOON_EDGE_DIR):
+def produce_edge_dataset(cartoon_folder = config.TRAIN_CARTOON_DIR, cartoon_edge_folder = config.TRAIN_CARTOON_EDGE_DIR):
 
     print("="*80)
     print(str(os.path.basename(__file__)) + ": Cartoon Folder = "  + str(cartoon_folder))
-    print(str(os.path.basename(__file__)) + ": Cartoon-Edge paired Folder = " + str(cortoon_edge_folder))
+    print(str(os.path.basename(__file__)) + ": Cartoon-Edge paired Folder = " + str(cartoon_edge_folder))
     print(str(os.path.basename(__file__)) + ": Start edge-smoothing.")
 
     cartoon_files = os.listdir(cartoon_folder)
 
-    if not os.path.isdir(cortoon_edge_folder):
-        os.makedirs(cortoon_edge_folder)
+    if not os.path.isdir(cartoon_edge_folder):
+        os.makedirs(cartoon_edge_folder)
 
     count = 0
     
@@ -59,7 +59,7 @@ def produce_edge_dataset(cartoon_folder = config.TRAIN_CARTOON_DIR, cortoon_edge
         edge_cartoon = edge_smooth(bgr_cartoon, FORMAT_BGR=True)
         paired_image = align_image_pair(bgr_cartoon, edge_cartoon)
         count += 1
-        cv2.imwrite(os.path.join(cortoon_edge_folder, str(count) + '.png'), paired_image)
+        cv2.imwrite(os.path.join(cartoon_edge_folder, str(count) + '.png'), paired_image)
     
     print(str(os.path.basename(__file__)) + ": Finished edge-smoothing")
     print(str(os.path.basename(__file__)) + ": Converted total of " + str(count) + " images.")

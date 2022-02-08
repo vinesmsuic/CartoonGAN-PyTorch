@@ -45,8 +45,12 @@ def load_checkpoint(model, optimizer, lr, folder, checkpoint_file):
         loaded = False
     return loaded
 
-
-
+def print_network(net):
+    num_params = 0
+    for param in net.parameters():
+        num_params += param.numel()
+    print(net)
+    print('Total number of parameters: %d' % num_params)
 
 def seed_everything(seed=42):
     os.environ["PYTHONHASHSEED"] = str(seed)

@@ -12,8 +12,6 @@ from tqdm import tqdm
 from torchvision.utils import save_image
 from utils import save_test_examples, load_checkpoint, save_checkpoint
 
-# This code throw error because it cause NaN values... how do i solve it?
-
 def initialization_phase(gen, loader, opt_gen, l1_loss, g_scaler, VGG, pretrain_epochs):
     for epoch in range(pretrain_epochs):
         loop = tqdm(loader, leave=True)
@@ -27,7 +25,7 @@ def initialization_phase(gen, loader, opt_gen, l1_loss, g_scaler, VGG, pretrain_
 
                 sample_photo_feature = VGG(sample_photo)
                 reconstructed_feature = VGG(reconstructed)
-                reconstruction_loss = config.LAMBDA_CONTENT * l1_loss(reconstructed_feature, sample_photo_feature.detach())
+                reconstruction_loss = l1_loss(reconstructed_feature, sample_photo_feature.detach())
 
             opt_gen.zero_grad()
             g_scaler.scale(reconstruction_loss).backward()
@@ -66,7 +64,7 @@ def train_fn(disc, gen, loader, opt_disc, opt_gen, l1_loss, mse, g_scaler, d_sca
             D_edge_loss = mse(D_edge, torch.zeros_like(D_edge))
 
             # Author's code divided it by 3.0, I believe it has similar thoughts to CycleGAN (divided by 2 with only 2 loss)
-            D_loss = (D_real_loss + D_fake_loss + D_edge_loss) / 3.0     
+            D_loss = (D_real_loss + D_fake_loss + D_edge_loss) / 3.0   
             
         opt_disc.zero_grad() # clears old gradients from the last step
         d_scaler.scale(D_loss).backward() #backpropagation
@@ -105,7 +103,7 @@ def main():
     disc = Discriminator(in_channels=3).to(config.DEVICE)
     gen = Generator(in_channels=3).to(config.DEVICE)
     opt_disc = optim.Adam(disc.parameters(), lr=config.LEARNING_RATE, betas=(0.5, 0.999))
-    opt_gen = optim.Adam(disc.parameters(), lr=config.LEARNING_RATE, betas=(0.5, 0.999))
+    opt_gen = optim.Adam(gen.parameters(), lr=config.LEARNING_RATE, betas=(0.5, 0.999))
 
     VGG19 = VGGNet(in_channels=3, VGGtype="VGG19", init_weights=config.VGG_WEIGHTS, batch_norm=False, feature_mode=True)
     VGG19 = VGG19.to(config.DEVICE)

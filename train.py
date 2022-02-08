@@ -12,33 +12,44 @@ from tqdm import tqdm
 from torchvision.utils import save_image
 from utils import save_test_examples, load_checkpoint, save_checkpoint
 
-def initialization_phase(gen, loader, opt_gen, l1_loss, VGG, pretrain_epochs):
+def initialization_phase(gen, loader, opt_gen, l1_loss, g_scaler, VGG, pretrain_epochs):
     for epoch in range(pretrain_epochs):
         loop = tqdm(loader, leave=True)
-        
+        losses = []
+
         for idx, (sample_photo, _, _) in enumerate(loop):
             sample_photo = sample_photo.to(config.DEVICE)
 
             # train generator G
+            #with torch.cuda.amp.autocast():
             reconstructed = gen(sample_photo)
 
             sample_photo_feature = VGG(sample_photo)
             reconstructed_feature = VGG(reconstructed)
-            reconstruction_loss = config.LAMBDA_CONTENT * l1_loss(reconstructed_feature, sample_photo_feature.detach())
+            reconstruction_loss = l1_loss(reconstructed_feature, sample_photo_feature.detach())
+            
+            losses.append(reconstruction_loss.item())
 
             opt_gen.zero_grad()
             
             reconstruction_loss.backward()
             opt_gen.step()
 
+            #opt_gen.zero_grad()
+            #g_scaler.scale(reconstruction_loss).backward()
+            #g_scaler.step(opt_gen)
+            #g_scaler.update()    
             loop.set_postfix(epoch=epoch)
+
+        print('[%d/%d] - Recon loss: %.8f' % ((epoch + 1), pretrain_epochs, torch.mean(torch.FloatTensor(losses))))
         
-    save_image(sample_photo*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "0_initialization_phase_photo.png"))
-    save_image(reconstructed*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "0_initialization_phase_reconstructed.png"))
+        save_image(sample_photo*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, str(epoch + 1) + "_initialization_phase_photo.png"))
+        save_image(reconstructed*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, str(epoch + 1) + "_initialization_phase_reconstructed.png"))
+        
     
 
 
-def train_fn(disc, gen, loader, opt_disc, opt_gen, l1_loss, mse, VGG):
+def train_fn(disc, gen, loader, opt_disc, opt_gen, l1_loss, mse, g_scaler, d_scaler, VGG):
     loop = tqdm(loader, leave=True)
 
     # Training
@@ -48,6 +59,7 @@ def train_fn(disc, gen, loader, opt_disc, opt_gen, l1_loss, mse, VGG):
         sample_edge = sample_edge.to(config.DEVICE)
 
         # Train Discriminator
+        #with torch.cuda.amp.autocast():
 
         #Pass samples into Discriminator: Fake Cartoon, real Cartoon and Edge
         fake_cartoon = gen(sample_photo)
@@ -69,6 +81,10 @@ def train_fn(disc, gen, loader, opt_disc, opt_gen, l1_loss, mse, VGG):
         D_loss.backward()
         opt_disc.step()
         
+        #opt_disc.zero_grad() # clears old gradients from the last step
+        #d_scaler.scale(D_loss).backward() #backpropagation
+        #d_scaler.step(opt_disc)
+        #d_scaler.update()
 
         # Train Generator
         #with torch.cuda.amp.autocast():
@@ -89,6 +105,11 @@ def train_fn(disc, gen, loader, opt_disc, opt_gen, l1_loss, mse, VGG):
 
         G_loss.backward()
         opt_gen.step()
+
+        #opt_gen.zero_grad()
+        #g_scaler.scale(G_loss).backward()
+        #g_scaler.step(opt_gen)
+        #g_scaler.update()
 
         if idx % 200 == 0:
             save_image(sample_photo*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "step_" + str(idx) + "_photo.png"))
@@ -127,12 +148,15 @@ def main():
     val_dataset = TestDataset(config.VAL_PHOTO_DIR)
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=config.NUM_WORKERS)
 
+    #Use float64 training 
+    g_scaler = torch.cuda.amp.GradScaler()
+    d_scaler = torch.cuda.amp.GradScaler()
 
     # Initialization Phase
     if not(is_gen_loaded and is_disc_loaded):
         print("="*80)
         print("=> Initialization Phase")
-        initialization_phase(gen, train_loader, opt_gen, L1_Loss, VGG19, pretrain_epochs=config.PRETRAIN_EPOCHS)
+        initialization_phase(gen, train_loader, opt_gen, L1_Loss, g_scaler, VGG19, pretrain_epochs=config.PRETRAIN_EPOCHS)
         print("Finished Initialization Phase")
         print("="*80)
 
@@ -141,7 +165,7 @@ def main():
 
     # Do the training
     for epoch in range(config.NUM_EPOCHS):
-        train_fn(disc, gen, train_loader, opt_disc, opt_gen, L1_Loss, MSE_Loss, VGG19)
+        train_fn(disc, gen, train_loader, opt_disc, opt_gen, L1_Loss, MSE_Loss, g_scaler, d_scaler, VGG19)
 
         if config.SAVE_MODEL and epoch % 5 == 0:
             save_checkpoint(gen, opt_gen, epoch, folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_GEN)
