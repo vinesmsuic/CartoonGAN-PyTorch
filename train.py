@@ -101,13 +101,13 @@ def train_fn(total_epoch, disc, gen, train_loader, val_loader, opt_disc, opt_gen
             G_loss.backward()
             opt_gen.step()
 
-            if step % 200 == 0:
+            if step % config.SAVE_IMG_PER_STEP == 0:
                 save_image(sample_photo*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "epoch_" + str(epoch + 1) + "step_" + str(step + 1) + "_photo.png"))
                 save_image(fake_cartoon*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "epoch_" + str(epoch + 1) + "step_" + str(step + 1) + "_fakecartoon.png"))
 
             step+= 1
 
-            loop.set_postfix(step=step)
+            loop.set_postfix(step=step, epoch=epoch+1)
 
         if config.SAVE_MODEL and epoch % 5 == 0:
             save_checkpoint(gen, opt_gen, epoch, folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_GEN)
@@ -148,7 +148,7 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=config.NUM_WORKERS)
 
     # Initialization Phase
-    if not(is_gen_loaded and is_disc_loaded):
+    if not(is_gen_loaded):
         print("="*80)
         print("=> Initialization Phase")
         initialization_phase(gen, train_loader, opt_gen, L1_Loss, VGG19, pretrain_epochs=config.PRETRAIN_EPOCHS)

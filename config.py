@@ -36,6 +36,8 @@ VGG_WEIGHTS = "vgg19-dcbb9e9d.pth"
 LOAD_CHECKPOINT_DISC = "i_disc.pth.tar"
 LOAD_CHECKPOINT_GEN = "i_gen.pth.tar"
 
+SAVE_IMG_PER_STEP = 200
+
 transform_cartoon_pairs = A.Compose(
     #additional_targets: apply same augmentation on both images
     [   
