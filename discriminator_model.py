@@ -43,7 +43,9 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         x = self.model(x)
-        return torch.sigmoid(x)
+        return x
+        #No sigmoid for LSGAN adv loss
+        #return torch.sigmoid(x)
 
 
 
