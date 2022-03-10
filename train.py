@@ -10,7 +10,7 @@ from VGGNet import VGGNet
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from torchvision.utils import save_image
-from utils import save_test_examples, load_checkpoint, save_checkpoint
+from utils import save_test_examples, load_checkpoint, save_checkpoint, save_training_images
 
 def initialization_phase(gen, loader, opt_gen, l1_loss, VGG, pretrain_epochs):
     for epoch in range(pretrain_epochs):
@@ -45,8 +45,6 @@ def initialization_phase(gen, loader, opt_gen, l1_loss, VGG, pretrain_epochs):
         
         save_image(sample_photo*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, str(epoch + 1) + "_initialization_phase_photo.png"))
         save_image(reconstructed*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, str(epoch + 1) + "_initialization_phase_reconstructed.png"))
-        
-    
 
 
 def train_fn(total_epoch, disc, gen, train_loader, val_loader, opt_disc, opt_gen, l1_loss, mse, VGG):
@@ -94,7 +92,7 @@ def train_fn(total_epoch, disc, gen, train_loader, val_loader, opt_disc, opt_gen
             content_loss = l1_loss(fake_cartoon_feature, sample_photo_feature.detach())
 
             # Compute loss (adversarial loss + lambda*content loss)
-            G_loss = G_fake_loss + config.LAMBDA_CONTENT * content_loss
+            G_loss = config.LAMBDA_ADV * G_fake_loss + config.LAMBDA_CONTENT * content_loss
 
             opt_gen.zero_grad()
 
@@ -104,12 +102,18 @@ def train_fn(total_epoch, disc, gen, train_loader, val_loader, opt_disc, opt_gen
             if step % config.SAVE_IMG_PER_STEP == 0:
                 save_image(sample_photo*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "epoch_" + str(epoch + 1) + "step_" + str(step + 1) + "_photo.png"))
                 save_image(fake_cartoon*0.5+0.5, os.path.join(config.RESULT_TRAIN_DIR, "epoch_" + str(epoch + 1) + "step_" + str(step + 1) + "_fakecartoon.png"))
+                print('[Epoch: %d| Step: %d] - D loss: %.12f' % ((epoch + 1), (step+1), D_loss.item()))
+                print('[Epoch: %d| Step: %d] - G Content loss (w/o lambda): %.12f' % ((epoch + 1), (step+1), content_loss.item()))
+                print('[Epoch: %d| Step: %d] - G Content loss (w/ lambda): %.12f' % ((epoch + 1), (step+1), config.LAMBDA_CONTENT * content_loss.item()))
+                print('[Epoch: %d| Step: %d] - G ADV loss (w/o lambda): %.12f' % ((epoch + 1), (step+1), G_fake_loss.item()))
+                print('[Epoch: %d| Step: %d] - G ADV loss (w/ lambda): %.12f' % ((epoch + 1), (step+1), config.LAMBDA_ADV * G_fake_loss.item()))
+                print('[Epoch: %d| Step: %d] - G loss: %.12f' % ((epoch + 1), (step+1), G_loss.item()))
 
             step+= 1
 
             loop.set_postfix(step=step, epoch=epoch+1)
 
-        if config.SAVE_MODEL and epoch % 5 == 0:
+        if config.SAVE_MODEL and epoch % config.SAVE_MODEL_FREQ == 0:
             save_checkpoint(gen, opt_gen, epoch, folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_GEN)
             save_checkpoint(disc, opt_disc, epoch, folder=config.CHECKPOINT_FOLDER, filename=config.CHECKPOINT_DISC)
 
@@ -165,3 +169,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#TODO
+#https://github.com/SystemErrorWang/CartoonGAN/blob/master/old_code/main.py

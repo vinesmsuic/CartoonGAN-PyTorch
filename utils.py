@@ -5,6 +5,11 @@ import copy
 import os
 from torchvision.utils import save_image
 
+def save_training_images(image, epoch, step, folder, suffix_filename:str):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    save_image(image, os.path.join(folder, f"epoch_{epoch}_step_{step}_{suffix_filename}.png"))
+
 def save_test_examples(gen, val_loader, epoch, folder):
     x = next(iter(val_loader))
     x = x.to(config.DEVICE)
@@ -24,6 +29,7 @@ def save_checkpoint(model, optimizer, epoch, folder, filename="my_checkpoint.pth
     }
     path = os.path.join(folder, str(epoch) + "_" + filename)
     torch.save(checkpoint, path)
+    print("=> checkpoint saved: " + str(path))
 
 
 def load_checkpoint(model, optimizer, lr, folder, checkpoint_file):

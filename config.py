@@ -18,8 +18,11 @@ RESULT_TEST_DIR = os.path.join("results", "test")
 
 BATCH_SIZE = 1
 LEARNING_RATE = 2e-4
+
+LAMBDA_ADV = 1
 LAMBDA_CONTENT = 10
-NUM_WORKERS = 8
+
+NUM_WORKERS = 4
 IMAGE_SIZE = 256
 
 PRETRAIN_EPOCHS = 10
@@ -27,6 +30,7 @@ NUM_EPOCHS = 100
 
 LOAD_MODEL = True
 SAVE_MODEL = True
+SAVE_MODEL_FREQ = 5
 
 CHECKPOINT_FOLDER = "checkpoints"
 CHECKPOINT_DISC = "disc.pth.tar"
@@ -44,7 +48,7 @@ transform_cartoon_pairs = A.Compose(
         #A.RandomCrop(width=IMAGE_SIZE*1.2, height=IMAGE_SIZE*1.2),
         A.Resize(width=IMAGE_SIZE, height=IMAGE_SIZE),
         #A.HorizontalFlip(p=0.5),
-        A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_pixel_value=255.0),
+        A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_pixel_value=255),
         ToTensorV2(),
     ], 
     additional_targets={"image0": "image"},
@@ -55,7 +59,7 @@ transform_input = A.Compose(
         A.Resize(width=IMAGE_SIZE, height=IMAGE_SIZE),
         #A.HorizontalFlip(p=0.5),
         #A.RandomBrightnessContrast(p=0.2),
-        A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_pixel_value=255.0,),
+        A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_pixel_value=255),
         ToTensorV2(),
     ]
 )
@@ -63,7 +67,7 @@ transform_input = A.Compose(
 transform_test = A.Compose(
     [
         A.Resize(width=IMAGE_SIZE, height=IMAGE_SIZE),
-        A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_pixel_value=255.0,),
+        A.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], max_pixel_value=255),
         ToTensorV2(),
     ]
 )
